@@ -1,5 +1,6 @@
 # 🧠 Array vs Linked List: Memory Allocator Simulator
-<img width="2491" height="1303" alt="image" src="https://github.com/user-attachments/assets/e2067739-61ee-4eab-bfbc-06c27815b80a" />
+
+<img width="1708" height="978" alt="image" src="https://github.com/user-attachments/assets/6842e9ca-4775-47a4-a9f4-16adbdf0f523" />
 
 This interactive tool is designed to help students visually understand how computers store data in memory (RAM) and why choosing the right data structure matters.
 
