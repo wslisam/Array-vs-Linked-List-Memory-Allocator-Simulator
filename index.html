@@ -11,24 +11,31 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- MathJax for rendering Big-O notation smoothly -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']]
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
     <style>
-        /* Custom Animations and Styles */
-        body {
-            background-color: #f8fafc;
-        }
-        .cell {
-            transition: all 0.3s ease;
-        }
+        /* Custom Animations and Base Styles */
+        body { background-color: #f8fafc; overflow-x: hidden; }
+        .cell { transition: all 0.3s ease; }
         .cell-empty { background-color: #ffffff; border-color: #cbd5e1; }
-        .cell-os { background-color: #94a3b8; border-color: #64748b; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.1) 5px, rgba(255,255,255,0.1) 10px); }
+        /* Representing Operating System or pre-occupied memory */
+        .cell-os { 
+            background-color: #94a3b8; border-color: #64748b; 
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.1) 5px, rgba(255,255,255,0.1) 10px); 
+        }
         
-        /* Base styles for allocated cells, colors applied dynamically via inline styles */
         .cell-array { color: white; border-width: 2px; border-style: solid; box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
         .cell-ll { color: white; border-radius: 50%; border-width: 2px; border-style: solid; box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
         
-        .shake {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
             20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -36,143 +43,227 @@
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
 
-        /* SVG Arrow styling */
         .pointer-arrow {
-            stroke-width: 2.5;
-            fill: none;
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
+            stroke-width: 2.5; fill: none; stroke-dasharray: 1000; stroke-dashoffset: 1000;
             animation: drawArrow 0.8s forwards;
         }
-        @keyframes drawArrow {
-            to { stroke-dashoffset: 0; }
-        }
+        @keyframes drawArrow { to { stroke-dashoffset: 0; } }
+
+        /* Custom Scrollbar for neatness */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .code-kw { color: #2563eb; font-weight: bold; } /* Keyword */
+        .code-type { color: #059669; font-weight: bold; } /* Type */
+        .code-comment { color: #64748b; font-style: italic; } /* Comment */
+        .code-str { color: #b91c1c; } /* String */
     </style>
 </head>
-<body class="h-screen flex flex-col font-sans text-slate-800 overflow-hidden">
+<body class="h-screen flex flex-col font-sans text-slate-800">
 
     <!-- Header -->
-    <header class="bg-indigo-600 text-white shadow-md py-3 px-6 flex justify-between items-center shrink-0">
-        <div class="flex items-center gap-4">
+    <header class="bg-indigo-700 text-white shadow-md py-3 px-6 flex justify-between items-center shrink-0 z-20">
+        <div class="flex items-center gap-3">
             <i class="fa-solid fa-microchip text-2xl"></i>
-            <h1 class="text-xl font-bold tracking-wide" id="app-title">Array vs Linked List Memory Allocator</h1>
+            <h1 class="text-xl font-bold tracking-wide" id="app-title">Array vs Linked List Simulator</h1>
         </div>
         <div class="flex items-center gap-4 text-sm">
             <span class="opacity-80 text-xs font-normal">Created by Sam Li</span>
-            <button onclick="toggleLanguage()" class="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded-md transition border border-indigo-400 flex items-center gap-2">
-                <i class="fa-solid fa-language"></i> <span id="lang-btn">中文</span>
+            <button onclick="toggleLanguage()" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-md transition border border-indigo-400 flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-language"></i> <span id="lang-btn">繁體中文</span>
             </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col lg:flex-row gap-6 p-6 overflow-hidden">
+    <!-- Main Layout -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
-        <!-- Left Panel: Theory & Controls -->
-        <div class="w-full lg:w-1/2 flex flex-col gap-4 h-full">
+        <!-- Left Panel: Pedagogical Flow (Scrollable) -->
+        <div class="w-full lg:w-[55%] flex flex-col overflow-y-auto p-6 lg:p-8 space-y-8 bg-slate-50">
             
-            <!-- Pedagogical Explanation Card -->
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-y-auto">
-                <h2 class="text-lg font-bold text-indigo-700 mb-2 border-b pb-2" id="theory-title">Why does Memory Allocation matter?</h2>
-                
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
-                    <!-- Array Info -->
-                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                        <h3 class="font-bold text-blue-800 flex items-center gap-2 mb-2">
-                            <i class="fa-solid fa-table-cells"></i> <span id="lbl-array">Array (陣列)</span>
-                        </h3>
-                        <p class="text-sm mb-2" id="desc-array">Requires <strong>contiguous (side-by-side)</strong> memory blocks. It's like booking adjacent seats in a cinema.</p>
-                        <ul class="text-xs space-y-2 text-slate-700">
-                            <li><i class="fa-solid fa-bolt text-yellow-500"></i> <strong id="arr-pro-title">Access: Fast <em>O(1)</em></strong><br><span id="arr-pro-desc" class="text-slate-500">Because memory is continuous, the computer can instantly calculate the exact location of any item using math.</span></li>
-                            <li><i class="fa-solid fa-triangle-exclamation text-red-500"></i> <strong id="arr-con-title">Insert/Delete: Slow <em>O(n)</em></strong><br><span id="arr-con-desc" class="text-slate-500">To insert an item in the middle, you must shift all subsequent elements one space to the right to make room.</span></li>
-                            <li><i class="fa-solid fa-compress text-blue-500"></i> <strong id="arr-mem-title">Memory Efficiency: High</strong><br><span id="arr-mem-desc" class="text-slate-500">Only stores the actual data. No extra memory is wasted.</span></li>
-                        </ul>
+            <!-- 1. Short Description -->
+            <section>
+                <h2 class="text-2xl font-extrabold text-slate-800 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-indigo-600"></i> <span id="sec-intro-title">Introduction</span>
+                </h2>
+                <p class="text-slate-600 leading-relaxed" id="sec-intro-desc"></p>
+            </section>
+
+            <!-- 2. Concept Explanation -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Array Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-blue-100 border-t-4 border-t-blue-500">
+                    <h3 class="font-bold text-blue-800 text-lg flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-table-cells"></i> <span id="lbl-array">Array</span>
+                    </h3>
+                    <p class="text-sm text-slate-600 mb-4" id="desc-array"></p>
+                    <ul class="text-sm space-y-3 text-slate-700">
+                        <li><i class="fa-solid fa-bolt text-yellow-500 w-5"></i> <strong id="arr-pro-title"></strong><br><span id="arr-pro-desc" class="text-slate-500 text-xs"></span></li>
+                        <li><i class="fa-solid fa-triangle-exclamation text-red-500 w-5"></i> <strong id="arr-con-title"></strong><br><span id="arr-con-desc" class="text-slate-500 text-xs"></span></li>
+                    </ul>
+                </div>
+                <!-- Linked List Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-emerald-100 border-t-4 border-t-emerald-500">
+                    <h3 class="font-bold text-emerald-800 text-lg flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-link"></i> <span id="lbl-ll">Linked List</span>
+                    </h3>
+                    <p class="text-sm text-slate-600 mb-4" id="desc-ll"></p>
+                    <ul class="text-sm space-y-3 text-slate-700">
+                        <li><i class="fa-solid fa-triangle-exclamation text-red-500 w-5"></i> <strong id="ll-con-title"></strong><br><span id="ll-con-desc" class="text-slate-500 text-xs"></span></li>
+                        <li><i class="fa-solid fa-bolt text-yellow-500 w-5"></i> <strong id="ll-pro-title"></strong><br><span id="ll-pro-desc" class="text-slate-500 text-xs"></span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 3. Core Concept & Misconception Section (UI Fixed) -->
+            <section class="bg-amber-50 border-l-4 border-amber-500 p-5 rounded-r-xl shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="text-amber-500 text-2xl mt-1 shrink-0">
+                        <i class="fa-solid fa-lightbulb"></i>
                     </div>
-
-                    <!-- Linked List Info -->
-                    <div class="bg-green-50 p-3 rounded-lg border border-green-100">
-                        <h3 class="font-bold text-green-800 flex items-center gap-2 mb-2">
-                            <i class="fa-solid fa-link"></i> <span id="lbl-ll">Linked List (鏈結串列)</span>
-                        </h3>
-                        <p class="text-sm mb-2" id="desc-ll">Uses <strong>scattered</strong> memory. Nodes are connected via pointers, like a treasure hunt.</p>
-                        <ul class="text-xs space-y-2 text-slate-700">
-                            <li><i class="fa-solid fa-triangle-exclamation text-red-500"></i> <strong id="ll-con-title">Access: Slow <em>O(n)</em></strong><br><span id="ll-con-desc" class="text-slate-500">You must start from the beginning and follow the pointers one by one to find your target.</span></li>
-                            <li><i class="fa-solid fa-bolt text-yellow-500"></i> <strong id="ll-pro-title">Insert/Delete: Fast <em>O(1)</em></strong><br><span id="ll-pro-desc" class="text-slate-500">No shifting needed! Just change the pointer of the previous node to point to the new node.</span></li>
-                            <li><i class="fa-solid fa-weight-hanging text-red-500"></i> <strong id="ll-mem-title">Memory Overhead: Higher</strong><br><span id="ll-mem-desc" class="text-slate-500">Each node must store the data AND a pointer (the memory address of the next node).</span></li>
-                        </ul>
+                    <div>
+                        <h3 class="font-bold text-amber-900 mb-2" id="concept-title"></h3>
+                        <p class="text-sm text-amber-800 leading-relaxed mb-4" id="concept-desc"></p>
+                        
+                        <!-- Mini-callout for the Misconception -->
+                        <div class="bg-amber-100 p-4 rounded-lg border border-amber-200 shadow-inner">
+                            <p class="text-sm text-amber-950 font-bold mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-circle-question text-amber-600"></i>
+                                <span id="misc-title"></span>
+                            </p>
+                            <p class="text-sm text-amber-900 leading-relaxed" id="misc-a"></p>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 text-sm mt-auto">
-                    <strong class="text-amber-800"><i class="fa-solid fa-lightbulb"></i> <span id="concept-title">Core Concept: Memory Fragmentation</span></strong>
-                    <p class="text-amber-900 mt-1 leading-relaxed text-xs" id="concept-desc">
-                        <strong>Why does RAM get fragmented?</strong> Operating systems and programs constantly load and unload data of varying sizes. When programs close, they leave small, non-contiguous "holes" of free memory. Over time, these gaps prevent the system from allocating large, continuous blocks for new tasks.<br><br>
-                        Even if there is enough <em>total</em> free space, an <strong>Array</strong> might fail to initialize because it cannot find enough <em>continuous</em> space. <strong>Linked Lists</strong> solve this by fitting into any available gaps!
-                    </p>
+            <!-- 4. Program Demonstration -->
+            <section class="bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                <div class="bg-slate-900 px-4 py-3 flex justify-between items-center border-b border-slate-700">
+                    <h3 class="font-bold text-slate-200 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-code"></i> <span id="code-title">Program Demonstration</span>
+                    </h3>
+                    <div class="flex bg-slate-700 rounded-lg p-1 gap-1">
+                        <button onclick="switchCode('py')" id="btn-py" class="px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white transition">Python</button>
+                        <button onclick="switchCode('cpp')" id="btn-cpp" class="px-3 py-1 text-xs font-medium rounded text-slate-300 hover:text-white transition">C++</button>
+                    </div>
                 </div>
-            </div>
+                <div class="p-5 font-mono text-sm leading-relaxed overflow-x-auto text-slate-300" id="code-content">
+                    <!-- Dynamic Code Content -->
+                </div>
+            </section>
 
-            <!-- Controls -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 shrink-0">
-                <h3 class="font-bold text-slate-700 mb-3" id="action-title">Interactive Simulation</h3>
-                
-                <div class="flex items-center gap-3 mb-3">
-                    <label id="lbl-size" class="text-sm font-bold text-slate-600">Structure Size:</label>
-                    <input type="number" id="custom-size" min="1" max="64" placeholder="Random (3-7)" class="border border-slate-300 rounded px-3 py-1.5 w-36 text-sm focus:outline-none focus:border-indigo-500">
-                    <span id="lbl-size-hint" class="text-xs text-slate-400">(Leave blank for random)</span>
+            <!-- 5. Think & Link (UX Improved) -->
+            <section>
+                <h3 class="font-bold text-indigo-700 mb-3 flex items-center gap-2 border-b-2 border-indigo-100 pb-2">
+                    <i class="fa-solid fa-link"></i> <span id="think-title">Think & Link</span>
+                </h3>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-sm font-medium text-slate-800 mb-4 leading-relaxed" id="think-q"></p>
+                    
+                    <!-- Textarea for student active learning -->
+                    <div class="mb-4">
+                        <textarea id="think-textarea" rows="3" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm text-slate-700 resize-none shadow-inner" placeholder=""></textarea>
+                    </div>
+                    
+                    <button onclick="toggleAnswer()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-sm border border-indigo-200" id="btn-show-ans">
+                        <i class="fa-solid fa-eye"></i> <span id="btn-show-ans-text">Compare Answer</span>
+                    </button>
+                    
+                    <div id="think-a" class="hidden mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200 text-sm text-slate-700 leading-relaxed shadow-sm transition-all">
+                        <div class="flex gap-2 items-center text-indigo-800 font-bold mb-2">
+                            <i class="fa-solid fa-chalkboard-user"></i> <span id="think-expert">Expert Answer:</span>
+                        </div>
+                        <div id="think-a-text"></div>
+                    </div>
                 </div>
+            </section>
 
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <button onclick="allocateArray()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded shadow transition flex justify-center items-center gap-2 font-medium">
-                        <i class="fa-solid fa-plus"></i> <span id="btn-alloc-arr">Create Array</span>
-                    </button>
-                    <button onclick="allocateLinkedList()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow transition flex justify-center items-center gap-2 font-medium">
-                        <i class="fa-solid fa-plus"></i> <span id="btn-alloc-ll">Create Linked List</span>
-                    </button>
+            <!-- 6. Self-Assessment (Quiz) -->
+            <section class="pb-10">
+                <h3 class="font-bold text-teal-700 mb-3 flex items-center gap-2 border-b-2 border-teal-100 pb-2">
+                    <i class="fa-solid fa-list-check"></i> <span id="quiz-title">Self-Assessment</span>
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                        <p class="text-sm font-medium mb-4 text-slate-800" id="quiz-q1"></p>
+                        <div class="flex gap-3">
+                            <button onclick="checkQuiz(1, 'A')" class="flex-1 py-3 text-sm font-bold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition shadow-sm" id="q1-optA"></button>
+                            <button onclick="checkQuiz(1, 'B')" class="flex-1 py-3 text-sm font-bold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition shadow-sm" id="q1-optB"></button>
+                        </div>
+                        <div id="quiz-fb1" class="text-sm font-bold mt-4 p-3 rounded-lg hidden"></div>
+                    </div>
                 </div>
-                
-                <div class="flex gap-3">
-                    <button onclick="initRAM(true)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 rounded transition text-sm font-medium">
-                        <i class="fa-solid fa-shuffle"></i> <span id="btn-frag">Fragmented RAM</span>
-                    </button>
-                    <button onclick="initRAM(false)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 rounded transition text-sm font-medium">
-                        <i class="fa-solid fa-broom"></i> <span id="btn-clean">Clean RAM</span>
-                    </button>
-                    <button onclick="clearAllocations()" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-2 px-4 rounded transition text-sm font-medium">
-                        <i class="fa-solid fa-trash-can"></i> <span id="btn-clear-alloc">Clear Allocations</span>
-                    </button>
-                </div>
-
-                <div id="status-message" class="mt-3 text-center font-bold text-sm h-5 transition-colors"></div>
-            </div>
+            </section>
 
         </div>
 
-        <!-- Right Panel: Visualization -->
-        <div class="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative h-full">
-            <h3 class="absolute top-4 left-6 font-bold text-slate-500 flex items-center gap-2">
-                <i class="fa-solid fa-memory"></i> <span id="ram-title">System RAM (8x8 Grid)</span>
-            </h3>
+        <!-- Right Panel: Simulator (Sticky Layout) -->
+        <div class="w-full lg:w-[45%] bg-white border-l border-slate-200 flex flex-col h-full shadow-[auto_0_20px_rgba(0,0,0,0.05)] z-10 relative">
             
-            <!-- Legend -->
-            <div class="absolute top-4 right-6 flex gap-3 text-xs font-medium text-slate-500">
-                <div class="flex items-center gap-1"><div class="w-3 h-3 bg-white border border-slate-300"></div> <span id="leg-free">Free</span></div>
-                <div class="flex items-center gap-1"><div class="w-3 h-3 bg-slate-400 border border-slate-500"></div> <span id="leg-os">Occupied</span></div>
+            <!-- Controls Section -->
+            <div class="p-6 bg-slate-50 border-b border-slate-200 shrink-0">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad text-indigo-600"></i> <span id="action-title">Interactive Simulator</span>
+                </h3>
+                
+                <div class="flex items-center gap-3 mb-4">
+                    <label id="lbl-size" class="text-sm font-bold text-slate-600">Structure Size:</label>
+                    <input type="number" id="custom-size" min="1" max="64" placeholder="3-7" class="border border-slate-300 rounded px-3 py-1.5 w-24 text-sm focus:outline-none focus:border-indigo-500 transition shadow-sm">
+                    <span id="lbl-size-hint" class="text-xs text-slate-400"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button onclick="allocateArray()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg shadow-sm transition flex justify-center items-center gap-2 font-medium text-sm">
+                        <i class="fa-solid fa-plus"></i> <span id="btn-alloc-arr">Allocate Array</span>
+                    </button>
+                    <button onclick="allocateLinkedList()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-lg shadow-sm transition flex justify-center items-center gap-2 font-medium text-sm">
+                        <i class="fa-solid fa-plus"></i> <span id="btn-alloc-ll">Allocate Linked List</span>
+                    </button>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="initRAM(true)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-2 rounded-md transition text-xs font-bold shadow-sm">
+                        <i class="fa-solid fa-shuffle"></i> <span id="btn-frag">Fragment RAM</span>
+                    </button>
+                    <button onclick="initRAM(false)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-2 rounded-md transition text-xs font-bold shadow-sm">
+                        <i class="fa-solid fa-broom"></i> <span id="btn-clean">Clean RAM</span>
+                    </button>
+                    <button onclick="clearAllocations()" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-2 px-2 rounded-md transition text-xs font-bold shadow-sm">
+                        <i class="fa-solid fa-trash-can"></i> <span id="btn-clear-alloc">Clear Blocks</span>
+                    </button>
+                </div>
+
+                <div id="status-message" class="mt-4 text-center font-bold text-sm h-6 transition-colors px-2 flex items-center justify-center rounded bg-slate-100 border border-transparent"></div>
             </div>
 
-            <!-- The Grid Container -->
-            <div class="relative w-full max-w-[450px] aspect-square mt-8">
-                <!-- SVG for drawing arrows -->
-                <svg id="svg-layer" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
-                    <defs>
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
-                        </marker>
-                    </defs>
-                </svg>
-                <!-- HTML Grid -->
-                <div id="ram-grid" class="w-full h-full grid grid-cols-8 grid-rows-8 gap-1 bg-slate-200 p-1 rounded border border-slate-300">
-                    <!-- Cells generated by JS -->
+            <!-- Visualization Canvas -->
+            <div class="flex-1 flex flex-col items-center justify-center p-6 relative bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+                <h3 class="absolute top-4 left-6 font-bold text-slate-500 text-sm flex items-center gap-2 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                    <i class="fa-solid fa-memory"></i> <span id="ram-title">System RAM (8x8 Grid)</span>
+                </h3>
+                
+                <div class="absolute top-4 right-6 flex gap-3 text-xs font-medium text-slate-600 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                    <div class="flex items-center gap-1"><div class="w-3 h-3 bg-white border border-slate-300 rounded-sm"></div> <span id="leg-free">Free</span></div>
+                    <div class="flex items-center gap-1"><div class="w-3 h-3 bg-slate-400 border border-slate-500 rounded-sm"></div> <span id="leg-os">Occupied</span></div>
+                </div>
+
+                <!-- RAM Grid Container -->
+                <div class="relative w-full max-w-[380px] aspect-square mt-6 shadow-md rounded-lg">
+                    <!-- SVG Overlay for Pointers -->
+                    <svg id="svg-layer" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
+                            </marker>
+                        </defs>
+                    </svg>
+                    <!-- Actual Grid -->
+                    <div id="ram-grid" class="w-full h-full grid grid-cols-8 grid-rows-8 gap-1 bg-slate-300 p-1.5 rounded-lg border border-slate-400 shadow-inner">
+                        <!-- Cells injected via JS -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -180,123 +271,213 @@
     </main>
 
     <script>
-        // --- State Management ---
+        // --- Core State ---
         const GRID_SIZE = 64;
         let ram = []; 
         let currentLang = 'en';
+        let currentCodeLang = 'py'; // 'py' or 'cpp'
         let allocationCounter = 0;
 
         const colors = [
             { bg: '#3b82f6', border: '#1d4ed8' }, // Blue
-            { bg: '#10b981', border: '#047857' }, // Green
+            { bg: '#10b981', border: '#047857' }, // Emerald
             { bg: '#f59e0b', border: '#b45309' }, // Amber
             { bg: '#8b5cf6', border: '#5b21b6' }, // Violet
             { bg: '#ec4899', border: '#be185d' }, // Pink
             { bg: '#06b6d4', border: '#0e7490' }, // Cyan
-            { bg: '#f97316', border: '#c2410c' }  // Orange
         ];
 
-        // --- Dictionary for i18n ---
+        // --- Multi-language Dictionary ---
+        // Adheres strictly to the pedagogical guidelines & HKDSE terminology
         const dict = {
             en: {
-                appTitle: "Array vs Linked List Memory Allocator",
-                langBtn: "中文",
-                theoryTitle: "Why does Memory Allocation matter?",
+                appTitle: "Array vs Linked List Simulator",
+                langBtn: "繁體中文",
+                
+                // Pedagogy: Introduction
+                introTitle: "Introduction",
+                introDesc: "Explore how computers allocate memory for two fundamental data structures: <strong>Arrays</strong> and <strong>Linked Lists</strong>. Understanding how memory is structured helps us deduce their Time Complexity $O(n)$ limits.",
+                
+                // Pedagogy: Concept
                 lblArray: "Array",
-                descArray: "Requires <strong>contiguous (side-by-side)</strong> memory blocks. It's like booking adjacent seats in a cinema.",
-                arrProTitle: "Access: Fast <em>O(1)</em>",
-                arrProDesc: "Because memory is continuous, the computer can instantly calculate the exact location of any item using math.",
-                arrConTitle: "Insert/Delete: Slow <em>O(n)</em>",
-                arrConDesc: "To insert an item in the middle, you must shift all subsequent elements one space to the right to make room.",
-                arrMemTitle: "Memory Efficiency: High",
-                arrMemDesc: "Only stores the actual data. No extra memory is wasted.",
+                descArray: "Requires <strong>Contiguous Memory</strong>. Elements are stored side-by-side sequentially.",
+                arrProTitle: "Access: Fast $O(1)$",
+                arrProDesc: "Given an index, the exact memory address is calculated instantly using math.",
+                arrConTitle: "Insert/Delete: Slow $O(n)$",
+                arrConDesc: "Requires shifting all subsequent elements to maintain contiguous order.",
                 
                 lblLl: "Linked List",
-                descLl: "Uses <strong>scattered</strong> memory. Nodes are connected via pointers, like a treasure hunt.",
-                llConTitle: "Access: Slow <em>O(n)</em>",
-                llConDesc: "You must start from the beginning and follow the pointers one by one to find your target.",
-                llProTitle: "Insert/Delete: Fast <em>O(1)</em>",
-                llProDesc: "No shifting needed! Just change the pointer of the previous node to point to the new node.",
-                llMemTitle: "Memory Overhead: Higher",
-                llMemDesc: "Each node must store the data AND a pointer (the memory address of the next node).",
+                descLl: "Uses <strong>Scattered Memory</strong>. Each Node contains data and a Pointer to the next node.",
+                llConTitle: "Access: Slow $O(n)$",
+                llConDesc: "To find the $i$-th element, you must traverse pointers starting from the Head.",
+                llProTitle: "Insert/Delete: Fast $O(1)$",
+                llProDesc: "Only requires updating the pointers of the adjacent nodes. No shifting is needed.",
                 
+                // Pedagogy: Core Concept & Misconception
                 conceptTitle: "Core Concept: Memory Fragmentation",
-                conceptDesc: "<strong>Why does RAM get fragmented?</strong> Operating systems and programs constantly load and unload data of varying sizes. When programs close, they leave small, non-contiguous \"holes\" of free memory. Over time, these gaps prevent the system from allocating large, continuous blocks for new tasks.<br><br>Even if there is enough <em>total</em> free space, an <strong>Array</strong> might fail to initialize because it cannot find enough <em>continuous</em> space. <strong>Linked Lists</strong> solve this by fitting into any available gaps!",
+                conceptDesc: "<strong>Why does RAM get fragmented?</strong> Operating systems and programs constantly load and unload data of varying sizes. When programs close, they leave small, non-contiguous 'holes' of free memory. Over time, these gaps prevent the system from allocating large, continuous blocks for new tasks.<br><br>Even if there is enough <em>total</em> free space, an <strong>Array</strong> might fail to initialize because it cannot find enough <em>continuous</em> space. <strong>Linked Lists</strong> solve this by fitting into any available gaps!",
+                miscTitle: "But wait, are Linked Lists always better?",
+                miscA: "Not entirely. Linked Lists have a higher <strong>Memory Overhead</strong>. Every node must store both the data AND the memory address (Pointer) of the next node. If storing very small data (like a single character), the pointer itself might take up more memory than the actual data!",
+
+                // Pedagogy: Code Demo
+                codeTitle: "Program Demonstration",
                 
-                actionTitle: "Interactive Simulation",
+                // Pedagogy: Think & Link
+                thinkTitle: "Think & Link",
+                thinkQ: "Scenario: You are building a 'Music Playlist' application. Users frequently drag and drop songs to change their order (insertions/deletions in the middle). Which data structure is theoretically more efficient for managing the playlist order?",
+                thinkPlaceholder: "Draft your thoughts here before checking the answer...",
+                btnShowAns: "Compare with Expert Answer",
+                btnHideAns: "Hide Answer",
+                thinkExpert: "Teacher's Note:",
+                thinkA: "<strong>Linked List</strong>. Since users frequently insert and delete items in the middle of the playlist, a Linked List allows these operations in $O(1)$ time by simply updating the pointers. An Array would require shifting elements $O(n)$ every time a song is moved.",
+
+                // Pedagogy: Quiz
+                quizTitle: "Self-Assessment",
+                quizQ1: "Q: Which data structure is most likely to fail initialization if the system RAM suffers from severe Memory Fragmentation?",
+                q1OptA: "Array",
+                q1OptB: "Linked List",
+                quizFbCorrect: "✅ Correct! Arrays require contiguous memory blocks.",
+                quizFbWrong: "❌ Incorrect. Try again! Think about which structure needs side-by-side space.",
+
+                // Simulator Controls
+                actionTitle: "Interactive Simulator",
                 lblSize: "Structure Size:",
-                lblSizeHint: "(Leave blank for random)",
-                btnAllocArr: "Create Array",
-                btnAllocLl: "Create Linked List",
-                btnFrag: "Fragmented RAM",
+                lblSizeHint: "(Empty = Random)",
+                btnAllocArr: "Allocate Array",
+                btnAllocLl: "Allocate Linked List",
+                btnFrag: "Fragment RAM",
                 btnClean: "Clean RAM",
-                btnClearAlloc: "Clear Allocations",
+                btnClearAlloc: "Clear Blocks",
                 ramTitle: "System RAM (8x8 Grid)",
                 legFree: "Free",
                 legOs: "Occupied",
-                msgArrSuccess: "✅ Array (Size {size}) allocated successfully in contiguous memory!",
-                msgArrFail: "❌ Array (Size {size}) allocation failed! Not enough contiguous memory.",
-                msgLlSuccess: "✅ Linked List (Size {size}) allocated successfully!",
-                msgLlFail: "❌ Linked List (Size {size}) allocation failed! Not enough total memory."
+
+                // Toast Messages
+                msgArrSuccess: "✅ Array (Size {size}) allocated in Contiguous Memory!",
+                msgArrFail: "❌ Array allocation failed! Not enough Contiguous Memory.",
+                msgLlSuccess: "✅ Linked List (Size {size}) allocated using Pointers!",
+                msgLlFail: "❌ Linked List allocation failed! RAM is entirely full."
             },
             zh: {
-                appTitle: "陣列與鏈結串列記憶體爭奪戰",
+                appTitle: "陣列與鏈結串列 記憶體模擬器",
                 langBtn: "English",
-                theoryTitle: "為什麼記憶體分配如此重要？",
+                
+                // Pedagogy: Introduction
+                introTitle: "引言 (Introduction)",
+                introDesc: "探索電腦如何為兩種基礎資料結構：<strong>陣列 (Arrays)</strong> 與 <strong>鏈結串列 (Linked Lists)</strong> 分配記憶體 (Memory)。理解它們的底層記憶體結構，有助我們推導出其時間複雜度 (Time Complexity) 的極限。",
+                
+                // Pedagogy: Concept
                 lblArray: "陣列 (Array)",
-                descArray: "需要<strong>連續 (相鄰)</strong> 的記憶體空間。就像在戲院必須預訂相連的座位。",
-                arrProTitle: "讀取：極快 <em>O(1)</em>",
-                arrProDesc: "因為記憶體是連續的，電腦可以透過數學運算瞬間算出任何元素的確切位置。",
-                arrConTitle: "插入/刪除：緩慢 <em>O(n)</em>",
-                arrConDesc: "若要在中間插入元素，必須將後續所有元素向右移動一格來騰出空間。",
-                arrMemTitle: "記憶體效率：高",
-                arrMemDesc: "只儲存實際資料，不會浪費額外記憶體。",
+                descArray: "需要 <strong>連續記憶體 (Contiguous Memory)</strong>。所有元素必須並排循序儲存。",
+                arrProTitle: "讀取：極快 $O(1)$",
+                arrProDesc: "因為記憶體是連續的，給定索引 (Index) 後，電腦可瞬間透過數學算出確切記憶體位址。",
+                arrConTitle: "插入/刪除：緩慢 $O(n)$",
+                arrConDesc: "若在中間插入，必須將後續所有元素向右平移 (Shifting)，以保持連續性。",
                 
                 lblLl: "鏈結串列 (Linked List)",
-                descLl: "使用<strong>分散</strong>的記憶體。節點之間透過指標 (Pointers) 連接，就像尋寶遊戲。",
-                llConTitle: "讀取：緩慢 <em>O(n)</em>",
-                llConDesc: "必須從頭開始，順著指標一個一個找，直到發現目標。",
-                llProTitle: "插入/刪除：極快 <em>O(1)</em>",
-                llProDesc: "不需要移動任何元素！只需更改前一個節點的指標，使其指向新節點即可。",
-                llMemTitle: "記憶體開銷：較高",
-                llMemDesc: "每個節點除了儲存資料外，還必須額外儲存指標（即下一個節點的記憶體位址）。",
+                descLl: "使用 <strong>分散記憶體 (Scattered Memory)</strong>。每個節點 (Node) 包含資料與指向下個節點的指標 (Pointer)。",
+                llConTitle: "讀取：緩慢 $O(n)$",
+                llConDesc: "必須從頭節點 (Head) 開始，順著指標一個接一個走訪 (Traversal) 才能找到目標。",
+                llProTitle: "插入/刪除：極快 $O(1)$",
+                llProDesc: "不需平移任何元素！只需修改相鄰節點的指標 (Pointers) 指向新節點即可。",
                 
+                // Pedagogy: Core Concept & Misconception
                 conceptTitle: "核心概念：記憶體碎片化 (Memory Fragmentation)",
                 conceptDesc: "<strong>為什麼 RAM 會碎片化？</strong> 作業系統和應用程式會不斷載入和卸載不同大小的資料。當程式關閉時，會留下散落、不連續的記憶體「空洞」。久而久之，這些縫隙會阻礙系統為新任務分配大型的連續區塊。<br><br>即使「總剩餘空間」足夠，<strong>陣列</strong>也可能因為找不到「連續空間」而宣告失敗。相反，<strong>鏈結串列</strong>能見縫插針，完美利用零碎空間！",
+                miscTitle: "迷思：鏈結串列總是最好的選擇嗎？",
+                miscA: "並非如此。鏈結串列有較高的<strong>記憶體開銷 (Memory Overhead)</strong>。每個節點除了儲存資料外，還必須額外分配空間來儲存「指標 (Pointer)」。如果儲存的資料很小（例如單一字元），指標所佔用的記憶體可能比資料本身還要大！",
+
+                // Pedagogy: Code Demo
+                codeTitle: "程式碼演示 (Code Demonstration)",
                 
-                actionTitle: "互動模擬區",
-                lblSize: "資料結構大小:",
-                lblSizeHint: "(留白則隨機產生)",
-                btnAllocArr: "分配陣列",
-                btnAllocLl: "分配鏈結串列",
-                btnFrag: "碎片化記憶體 (Fragmented)",
-                btnClean: "清理記憶體 (Clean)",
-                btnClearAlloc: "清除已分配",
-                ramTitle: "系統記憶體 RAM (8x8 陣列)",
+                // Pedagogy: Think & Link
+                thinkTitle: "思考與連結 (Think & Link)",
+                thinkQ: "情境題：你正在開發一個「音樂播放清單」應用程式。用戶經常會拖曳歌曲來改變播放順序（在中間頻繁進行插入與刪除）。理論上，哪種資料結構更適合用來管理播放順序？",
+                thinkPlaceholder: "在核對答案前，請先在此寫下你的想法...",
+                btnShowAns: "核對老師解析",
+                btnHideAns: "隱藏解析",
+                thinkExpert: "老師解析：",
+                thinkA: "<strong>鏈結串列 (Linked List)</strong>。因為用戶頻繁在中間插入與刪除歌曲，鏈結串列只需更新指標即可在 $O(1)$ 時間內完成。若使用陣列 (Array)，每次移動歌曲都需要耗費 $O(n)$ 的時間來平移後續元素。",
+
+                // Pedagogy: Quiz
+                quizTitle: "自我檢測 (Self-Assessment)",
+                quizQ1: "問：如果系統 RAM 遭遇嚴重的「記憶體碎片化 (Memory Fragmentation)」，哪一種資料結構最容易宣告失敗（無法分配空間）？",
+                q1OptA: "陣列 (Array)",
+                q1OptB: "鏈結串列 (Linked List)",
+                quizFbCorrect: "✅ 答對了！陣列需要尋找一塊完整「連續」的記憶體。",
+                quizFbWrong: "❌ 答錯了。請再試一次！思考一下哪種結構必須要「並排」空間。",
+
+                // Simulator Controls
+                actionTitle: "互動模擬器 (Simulator)",
+                lblSize: "資料大小:",
+                lblSizeHint: "(留空=隨機)",
+                btnAllocArr: "分配陣列 (Array)",
+                btnAllocLl: "分配鏈結串列 (Linked List)",
+                btnFrag: "產生碎片化記憶體",
+                btnClean: "清理記憶體",
+                btnClearAlloc: "清除已分配區塊",
+                ramTitle: "記憶體 (8x8 Grid)",
                 legFree: "空閒",
-                legOs: "已被佔用",
-                msgArrSuccess: "✅ 陣列 (大小 {size}) 分配成功！找到連續的記憶體空間。",
-                msgArrFail: "❌ 陣列 (大小 {size}) 分配失敗！找不到足夠的「連續」記憶體空間。",
-                msgLlSuccess: "✅ 鏈結串列 (大小 {size}) 分配成功！成功利用分散的記憶體空間。",
-                msgLlFail: "❌ 鏈結串列 (大小 {size}) 分配失敗！記憶體總容量不足。"
+                legOs: "已被系統佔用",
+
+                // Toast Messages
+                msgArrSuccess: "✅ 陣列 (大小 {size}) 分配成功！已找到連續記憶體。",
+                msgArrFail: "❌ 陣列分配失敗！找不到足夠的「連續」空間。",
+                msgLlSuccess: "✅ 鏈結串列 (大小 {size}) 分配成功！透過指標串連。",
+                msgLlFail: "❌ 鏈結串列分配失敗！記憶體已完全耗盡。"
             }
+        };
+
+        const codeSnippets = {
+            py: `
+<span class="code-comment"># 1. Array (Python Lists act as dynamic arrays)</span>
+arr = [<span class="code-str">10</span>, <span class="code-str">20</span>, <span class="code-str">30</span>, <span class="code-str">40</span>]
+<span class="code-kw">print</span>(arr[<span class="code-str">2</span>]) <span class="code-comment"># O(1) Access -> Output: 30</span>
+
+<span class="code-comment"># 2. Linked List Node Definition</span>
+<span class="code-kw">class</span> <span class="code-type">Node</span>:
+    <span class="code-kw">def</span> __init__(<span class="code-kw">self</span>, data):
+        <span class="code-kw">self</span>.data = data
+        <span class="code-kw">self</span>.next = <span class="code-kw">None</span> <span class="code-comment"># Pointer to next Node</span>
+
+<span class="code-comment"># Creating a scattered Linked List manually</span>
+head = Node(<span class="code-str">10</span>)
+head.next = Node(<span class="code-str">20</span>)
+head.next.next = Node(<span class="code-str">30</span>)`,
+            cpp: `
+<span class="code-comment">// 1. Array (Fixed contiguous memory block)</span>
+<span class="code-type">int</span> arr[<span class="code-str">4</span>] = {<span class="code-str">10</span>, <span class="code-str">20</span>, <span class="code-str">30</span>, <span class="code-str">40</span>};
+<span class="code-kw">cout</span> &lt;&lt; arr[<span class="code-str">2</span>]; <span class="code-comment">// O(1) Access -> Output: 30</span>
+
+<span class="code-comment">// 2. Linked List Node Definition</span>
+<span class="code-kw">struct</span> <span class="code-type">Node</span> {
+    <span class="code-type">int</span> data;
+    <span class="code-type">Node*</span> next; <span class="code-comment">// Pointer to next Node in memory</span>
+};
+
+<span class="code-comment">// Creating a scattered Linked List manually</span>
+<span class="code-type">Node*</span> head = <span class="code-kw">new</span> Node{<span class="code-str">10</span>, <span class="code-kw">nullptr</span>};
+head-&gt;next = <span class="code-kw">new</span> Node{<span class="code-str">20</span>, <span class="code-kw">nullptr</span>};
+head-&gt;next-&gt;next = <span class="code-kw">new</span> Node{<span class="code-str">30</span>, <span class="code-kw">nullptr</span>};`
         };
 
         // --- Initialization ---
         function init() {
             initRAM(true); 
             updateLanguageUI();
+            switchCode('py'); // Default to Python
             
             window.addEventListener('resize', () => {
                 drawArrows();
             });
         }
 
+        // --- Core RAM Logic ---
         function initRAM(fragmented) {
             ram = [];
             allocationCounter = 0;
             clearSVG();
-            setStatus("");
+            setStatus("", "");
             
             for (let i = 0; i < GRID_SIZE; i++) {
                 ram.push({ id: i, type: 'empty', next: null, color: null, allocId: null });
@@ -305,7 +486,7 @@
             if (fragmented) {
                 let occupiedCount = 0;
                 for (let i = 0; i < GRID_SIZE; i++) {
-                    if (Math.random() > 0.45 || (i % 4 === 3)) {
+                    if (Math.random() > 0.55 || (i % 5 === 4)) {
                         ram[i].type = 'os';
                         occupiedCount++;
                     }
@@ -322,21 +503,20 @@
             const inputEl = document.getElementById('custom-size');
             let val = parseInt(inputEl.value);
             if (!isNaN(val) && val > 0) {
-                return Math.min(val, GRID_SIZE); // Cap at max grid size
+                return Math.min(val, GRID_SIZE);
             }
-            return Math.floor(Math.random() * 5) + 3; // Random 3-7 if empty
+            return Math.floor(Math.random() * 4) + 3; // Random 3-6
         }
 
         function getColor() {
             return colors[allocationCounter % colors.length];
         }
 
-        // --- Core Logic ---
         function allocateArray() {
             const size = getRequestedSize();
             let startIdx = -1;
             
-            // Find contiguous memory
+            // Search for CONTIGUOUS blocks
             for (let i = 0; i <= GRID_SIZE - size; i++) {
                 let canFit = true;
                 for (let j = 0; j < size; j++) {
@@ -366,12 +546,11 @@
                 drawArrows(); 
                 
                 let msg = dict[currentLang].msgArrSuccess.replace('{size}', size);
-                setStatus(msg, "text-blue-600");
+                setStatus(msg, "text-blue-700 bg-blue-50 border-blue-200");
             } else {
-                gridEl.classList.add('shake');
-                setTimeout(() => gridEl.classList.remove('shake'), 500);
-                let msg = dict[currentLang].msgArrFail.replace('{size}', size);
-                setStatus(msg, "text-red-600");
+                triggerShake(gridEl);
+                let msg = dict[currentLang].msgArrFail;
+                setStatus(msg, "text-red-700 bg-red-50 border-red-200");
             }
         }
 
@@ -379,7 +558,7 @@
             const size = getRequestedSize();
             let allocatedNodes = [];
             
-            // Find scattered memory
+            // Search for SCATTERED blocks
             for (let i = 0; i < GRID_SIZE; i++) {
                 if (ram[i].type === 'empty') {
                     allocatedNodes.push(i);
@@ -407,12 +586,11 @@
                 drawArrows();
                 
                 let msg = dict[currentLang].msgLlSuccess.replace('{size}', size);
-                setStatus(msg, "text-green-600");
+                setStatus(msg, "text-emerald-700 bg-emerald-50 border-emerald-200");
             } else {
-                gridEl.classList.add('shake');
-                setTimeout(() => gridEl.classList.remove('shake'), 500);
-                let msg = dict[currentLang].msgLlFail.replace('{size}', size);
-                setStatus(msg, "text-red-600");
+                triggerShake(gridEl);
+                let msg = dict[currentLang].msgLlFail;
+                setStatus(msg, "text-red-700 bg-red-50 border-red-200");
             }
         }
 
@@ -428,10 +606,10 @@
                 }
             }
             renderGrid();
-            setStatus("");
+            setStatus("", "border-transparent");
         }
 
-        // --- Rendering ---
+        // --- Rendering & Visuals ---
         function renderGrid() {
             const container = document.getElementById('ram-grid');
             container.innerHTML = '';
@@ -439,7 +617,7 @@
             ram.forEach((cell, index) => {
                 const div = document.createElement('div');
                 div.id = `cell-${index}`;
-                div.className = `cell border rounded-sm flex items-center justify-center text-xs font-bold w-full h-full`;
+                div.className = `cell border rounded flex items-center justify-center text-[10px] font-extrabold w-full h-full shadow-sm`;
                 
                 if (cell.type === 'empty') {
                     div.classList.add('cell-empty');
@@ -484,13 +662,15 @@
                         
                         const dx = x2 - x1;
                         const dy = y2 - y1;
-                        const cx = x1 + dx/2 - dy/4; 
-                        const cy = y1 + dy/2 + dx/4;
+                        const distance = Math.sqrt(dx*dx + dy*dy);
+                        const curvature = distance > 50 ? 0.3 : 0.1;
+                        const cx = x1 + dx/2 - dy * curvature; 
+                        const cy = y1 + dy/2 + dx * curvature;
 
                         path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
                         path.setAttribute('class', 'pointer-arrow');
                         
-                        const strokeColor = cell.color ? cell.color.border : '#f59e0b';
+                        const strokeColor = cell.color ? cell.color.border : '#333';
                         path.setAttribute('stroke', strokeColor);
                         
                         const markerId = `arrowhead-${strokeColor.replace('#', '')}`;
@@ -498,14 +678,14 @@
                             const defs = svg.querySelector('defs');
                             const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
                             marker.setAttribute('id', markerId);
-                            marker.setAttribute('markerWidth', '10');
-                            marker.setAttribute('markerHeight', '7');
-                            marker.setAttribute('refX', '9');
-                            marker.setAttribute('refY', '3.5');
+                            marker.setAttribute('markerWidth', '8');
+                            marker.setAttribute('markerHeight', '6');
+                            marker.setAttribute('refX', '7');
+                            marker.setAttribute('refY', '3');
                             marker.setAttribute('orient', 'auto');
                             
                             const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                            polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+                            polygon.setAttribute('points', '0 0, 8 3, 0 6');
                             polygon.setAttribute('fill', strokeColor);
                             
                             marker.appendChild(polygon);
@@ -525,13 +705,72 @@
             paths.forEach(p => p.remove());
         }
 
-        function setStatus(msg, colorClass = "text-slate-800") {
+        function setStatus(msg, classes) {
             const el = document.getElementById('status-message');
             el.innerHTML = msg;
-            el.className = `mt-3 text-center font-bold text-sm h-5 transition-colors ${colorClass}`;
+            el.className = `mt-4 text-center font-bold text-xs md:text-sm h-8 transition-colors px-2 flex items-center justify-center rounded border ${classes}`;
         }
 
-        // --- i18n ---
+        function triggerShake(el) {
+            el.classList.add('shake');
+            setTimeout(() => el.classList.remove('shake'), 500);
+        }
+
+        // --- Interactive Pedagogy Logic ---
+        function switchCode(lang) {
+            currentCodeLang = lang;
+            document.getElementById('code-content').innerHTML = `<pre><code>${codeSnippets[lang]}</code></pre>`;
+            
+            document.getElementById('btn-py').className = lang === 'py' 
+                ? 'px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white transition shadow-inner' 
+                : 'px-3 py-1 text-xs font-medium rounded text-slate-300 hover:text-white transition';
+            
+            document.getElementById('btn-cpp').className = lang === 'cpp' 
+                ? 'px-3 py-1 text-xs font-bold rounded bg-emerald-600 text-white transition shadow-inner' 
+                : 'px-3 py-1 text-xs font-medium rounded text-slate-300 hover:text-white transition';
+        }
+
+        function toggleAnswer() {
+            const ansEl = document.getElementById('think-a');
+            const btnText = document.getElementById('btn-show-ans-text');
+            const iconEl = document.querySelector('#btn-show-ans i');
+            const textarea = document.getElementById('think-textarea');
+
+            if (ansEl.classList.contains('hidden')) {
+                ansEl.classList.remove('hidden');
+                btnText.innerHTML = dict[currentLang].btnHideAns;
+                iconEl.className = 'fa-solid fa-eye-slash';
+                
+                // Lock textarea when answer is revealed for better pedagogical flow
+                textarea.disabled = true;
+                textarea.classList.add('opacity-70', 'bg-slate-50', 'cursor-not-allowed');
+            } else {
+                ansEl.classList.add('hidden');
+                btnText.innerHTML = dict[currentLang].btnShowAns;
+                iconEl.className = 'fa-solid fa-eye';
+                
+                // Unlock
+                textarea.disabled = false;
+                textarea.classList.remove('opacity-70', 'bg-slate-50', 'cursor-not-allowed');
+            }
+        }
+
+        function checkQuiz(qNum, selected) {
+            const fbEl = document.getElementById(`quiz-fb${qNum}`);
+            fbEl.classList.remove('hidden', 'text-emerald-700', 'bg-emerald-50', 'border-emerald-200', 'text-red-700', 'bg-red-50', 'border-red-200');
+            
+            if (qNum === 1) {
+                if (selected === 'A') {
+                    fbEl.classList.add('text-emerald-700', 'bg-emerald-50', 'border', 'border-emerald-200');
+                    fbEl.innerHTML = dict[currentLang].quizFbCorrect;
+                } else {
+                    fbEl.classList.add('text-red-700', 'bg-red-50', 'border', 'border-red-200');
+                    fbEl.innerHTML = dict[currentLang].quizFbWrong;
+                }
+            }
+        }
+
+        // --- i18n & Updates ---
         function toggleLanguage() {
             currentLang = currentLang === 'en' ? 'zh' : 'en';
             updateLanguageUI();
@@ -541,16 +780,18 @@
             const d = dict[currentLang];
             document.getElementById('app-title').innerHTML = d.appTitle;
             document.getElementById('lang-btn').innerHTML = d.langBtn;
-            document.getElementById('theory-title').innerHTML = d.theoryTitle;
             
+            // Intro
+            document.getElementById('sec-intro-title').innerHTML = d.introTitle;
+            document.getElementById('sec-intro-desc').innerHTML = d.introDesc;
+            
+            // Concepts
             document.getElementById('lbl-array').innerHTML = d.lblArray;
             document.getElementById('desc-array').innerHTML = d.descArray;
             document.getElementById('arr-pro-title').innerHTML = d.arrProTitle;
             document.getElementById('arr-pro-desc').innerHTML = d.arrProDesc;
             document.getElementById('arr-con-title').innerHTML = d.arrConTitle;
             document.getElementById('arr-con-desc').innerHTML = d.arrConDesc;
-            document.getElementById('arr-mem-title').innerHTML = d.arrMemTitle;
-            document.getElementById('arr-mem-desc').innerHTML = d.arrMemDesc;
             
             document.getElementById('lbl-ll').innerHTML = d.lblLl;
             document.getElementById('desc-ll').innerHTML = d.descLl;
@@ -558,12 +799,38 @@
             document.getElementById('ll-con-desc').innerHTML = d.llConDesc;
             document.getElementById('ll-pro-title').innerHTML = d.llProTitle;
             document.getElementById('ll-pro-desc').innerHTML = d.llProDesc;
-            document.getElementById('ll-mem-title').innerHTML = d.llMemTitle;
-            document.getElementById('ll-mem-desc').innerHTML = d.llMemDesc;
             
+            // Misconception / Core Concept
             document.getElementById('concept-title').innerHTML = d.conceptTitle;
             document.getElementById('concept-desc').innerHTML = d.conceptDesc;
+            document.getElementById('misc-title').innerHTML = d.miscTitle;
+            document.getElementById('misc-a').innerHTML = d.miscA;
+
+            // Code
+            document.getElementById('code-title').innerHTML = d.codeTitle;
             
+            // Think & Link
+            document.getElementById('think-title').innerHTML = d.thinkTitle;
+            document.getElementById('think-q').innerHTML = d.thinkQ;
+            document.getElementById('think-a-text').innerHTML = d.thinkA;
+            document.getElementById('think-textarea').placeholder = d.thinkPlaceholder;
+            document.getElementById('btn-show-ans-text').innerHTML = d.btnShowAns;
+            document.getElementById('think-expert').innerHTML = d.thinkExpert;
+            
+            // Reset answer visibility on lang change
+            document.getElementById('think-a').classList.add('hidden');
+            document.getElementById('think-textarea').disabled = false;
+            document.getElementById('think-textarea').classList.remove('opacity-70', 'bg-slate-50', 'cursor-not-allowed');
+            document.querySelector('#btn-show-ans i').className = 'fa-solid fa-eye';
+
+            // Quiz
+            document.getElementById('quiz-title').innerHTML = d.quizTitle;
+            document.getElementById('quiz-q1').innerHTML = d.quizQ1;
+            document.getElementById('q1-optA').innerHTML = d.q1OptA;
+            document.getElementById('q1-optB').innerHTML = d.q1OptB;
+            document.getElementById('quiz-fb1').classList.add('hidden'); 
+            
+            // Controls
             document.getElementById('action-title').innerHTML = d.actionTitle;
             document.getElementById('lbl-size').innerHTML = d.lblSize;
             document.getElementById('lbl-size-hint').innerHTML = d.lblSizeHint;
@@ -577,7 +844,11 @@
             document.getElementById('leg-free').innerHTML = d.legFree;
             document.getElementById('leg-os').innerHTML = d.legOs;
             
-            setStatus("");
+            setStatus("", "border-transparent");
+
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
         }
 
         window.onload = init;
